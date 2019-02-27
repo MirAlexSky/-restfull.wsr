@@ -20,7 +20,7 @@ class PostController extends Controller
     public function index()
     {
         
-        $posts = Post::all();
+        $posts = Post::with('tags')->get();
 
         foreach ($posts as $post) {
             $response[] = $post->withTags();
@@ -53,7 +53,7 @@ class PostController extends Controller
         }
 
         $image = $request->image;
-        $imagePath = $image->store('post_images', 'public');
+        $imagePath = $image->store('post_images', 'api_public');
 
         $newPost = new Post;
         $newPost->title = $request->title;
@@ -281,7 +281,7 @@ class PostController extends Controller
             ])->setStatusCode(401, 'Not found');
         }
 
-        $posts = $tag->posts()->get();
+        $posts = $tag->posts()->with('tags')->get();
 
         foreach ($posts as $post) {
             $postsWithTags[] = $post->withTags();

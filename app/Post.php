@@ -34,9 +34,11 @@ class Post extends Model
             'datetime' => $this->created_at,
             'anons' => $this->anons,
             'text' => $this->text,
-            'tags' => $this->tags()->pluck('name')->toArray(),
+            'tags' => $this->tags->pluck('name')->toArray(),
             'image' => asset(Storage::url($this->image)),
         ];
+
+       // Post::all()
     }
 
     /**
@@ -67,7 +69,7 @@ class Post extends Model
     public function full() {
         return [
             'title' => $this->title,
-            'datetime' => $this->created_at,
+            'datetime' => $this->created_at,//->format(), //carbon
             'anons' => $this->anons,
             'text' => $this->text,
             'tags' => $this->tags()->pluck('name')->toArray(),

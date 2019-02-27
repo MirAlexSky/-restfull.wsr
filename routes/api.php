@@ -39,4 +39,4 @@ Route::get('posts/tag/{tag_name}', 'PostController@tag');
 
 //auth
 Route::post('auth', 'AuthController@postLogin');
-// Route::post('log', 'AuthController@postRegister');
+Route::post('log', 'AuthController@postRegister');

@@ -57,8 +57,8 @@ return [
 
         "api_public" => [
             'driver' => 'local',
-            'root' => '/',
-            'url' => env('APP_URL').'/api',
+            'root' => public_path() . '/api',
+            // 'url' => env('APP_URL').'/api',
             'visibility' => 'public',
         ],
 
