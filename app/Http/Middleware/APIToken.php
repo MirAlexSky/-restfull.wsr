@@ -30,7 +30,7 @@ class APIToken
                 }
             }
             return response()->json([
-                'Message' => 'Unauthorized: that user not exsists',
+                'Message' => 'Unauthorized: user not exsists',
             ])->setStatusCode(401, 'Unauthorized');
 
         }

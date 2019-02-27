@@ -8,6 +8,7 @@ use App\Tag;
 use App\Comment;
 use Validator;
 use App\User;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -22,14 +23,7 @@ class PostController extends Controller
         $posts = Post::all();
 
         foreach ($posts as $post) {
-            $response[] = [
-                'title' => $post->title,
-                'datetime' => $post->created_at,
-                'anons' => $post->anons,
-                'text' => $post->text,
-                'tags' => $post->tags()->pluck('name')->toArray(),
-                'image' => $post->image,
-            ];
+            $response[] = $post->withTags();
         }
 
         return response()->json($response)->setStatusCode(200, 'List posts');
@@ -58,35 +52,18 @@ class PostController extends Controller
             ])->setStatusCode(400, 'Creating error');
         }
 
+        $image = $request->image;
+        $imagePath = $image->store('post_images', 'public');
+
         $newPost = new Post;
         $newPost->title = $request->title;
         $newPost->anons = $request->anons;
         $newPost->text = $request->text;
-        $newPost->image = "imagePath";
+        $newPost->image = $imagePath;
        
-        // Do file upload
-        // $newPost->image = $request->image;
         $newPost->save();
 
-        if ($request->tags != "") {
-            $tags = explode(',', $request->tags);
-            $tags = array_map('trim', $tags);
-   
-            foreach ($tags as $tag) {
-                $tagToPost = Tag::where('name', $tag)->first();
-
-                if ($tagToPost == null) 
-                {
-                    $tagToPost = new Tag;
-                    $tagToPost->name = $tag;
-                    $tagToPost->save(); 
-                }
-
-                $tags_id[] = $tagToPost->id;
-            }
-
-            $newPost->tags()->attach($tags_id);
-        }
+        $newPost->addTags($request->tags);
 
         return response()->json([
             'status' => 'true',
@@ -104,18 +81,14 @@ class PostController extends Controller
     {
         $post = Post::find($id);
 
-        $response = [
-            'title' => $post->title,
-            'datetime' => $post->created_at,
-            'anons' => $post->anons,
-            'text' => $post->text,
-            'tegs' => $post->tags()->pluck('name')->toArray(),
-            'image' => $post->image,
-            'comments' => $post->comments()->get()->toArray()
-        ];
+        if (!$post) {
+            return response()->json([
+                'status' => 'false',
+                'message' => 'Post not found',
+            ])->setStatusCode(404, 'Post not found');
+        }
 
-        return response()->json($response)->setStatusCode(200, 'List posts');
-
+        return response()->json($post->full())->setStatusCode(200, 'View posts');
     }
 
 
@@ -151,10 +124,14 @@ class PostController extends Controller
             ])->setStatusCode(404, 'Post not found');
         }
 
+        // TODO Удаление старого фото
+        $image = $request->image;
+        $imagePath = $image->store('post_images', 'public');
+
         $post->title = $request->title;
         $post->anons = $request->anons;
         $post->text = $request->text;
-        $post->image = "imagePath";
+        $post->image = $imagePath;
 
         $post->save();
 
@@ -185,9 +162,8 @@ class PostController extends Controller
                 'datetime' => $post->created_at,
                 'anons' => $post->anons,
                 'text' => $post->text,
-                'tegs' => $post->tegs()->pluck('name')->toArray(),
-                'image' => $post->image,
-
+                'tegs' => $post->tags()->pluck('name')->toArray(),
+                'image' => asset(Storage::url($post->image)),
             ],
         ])->setStatusCode(201, 'Successful creation');
     }
@@ -219,4 +195,98 @@ class PostController extends Controller
         $post->comments()->insert();
     }
 
+    /**
+     * Store new comment
+     * 
+     * @param Request $request
+     * @return Response $response
+     */
+    public function comment(Request $request, $post_id) {
+
+        $validator = Validator::make($request->all(), [
+            'author' => 'required',
+            'comment' => 'required|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'false',
+                'message' => $validator->errors()->getMessages(),
+            ])->setStatusCode(400, 'creation error');
+        }
+
+        $post = Post::find($post_id);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'post not found'
+            ])->setStatusCode(404, 'Post not found');
+        }
+
+        $post->comments()->save(Comment::create([
+            'text' => $request->comment,
+            'author' => $request->author
+        ]));
+
+        return response()->json([
+            'status' => 'true'
+        ])->setStatusCode(201, 'Successful creation');
+
+    }
+
+    /**
+     * Store new comment
+     * 
+     * @param Request $request
+     * @return Response $response
+     */
+    public function deleteComment(Request $request, $post_id, $comment_id) 
+    {
+        $post = Post::find($post_id);
+
+        if (!$post) {
+            return response()->json([
+                'message' => 'post not found'
+            ])->setStatusCode(404, 'Post not found');
+        }
+
+        $comment = $post->comments()->find($comment_id);
+
+        if (!$comment) {
+            return response()->json([
+                'message' => 'comment not found'
+            ])->setStatusCode(404, 'comment not found');
+        }
+
+        $comment->delete();
+
+        return response()->json([
+            'status' => 'true',
+        ])->setStatusCode(201, 'Successful delete');
+    }
+
+    /**
+     * finf post via tag
+     * 
+     * @param Request $request
+     * @return Response $response
+     */
+    public function tag($tag_name) {
+        $tag = Tag::where('name', $tag_name)->first();
+
+        if (!$tag) {
+            return response()->json([
+                'status' => 'false',
+                'message' => 'tag not found',
+            ])->setStatusCode(401, 'Not found');
+        }
+
+        $posts = $tag->posts()->get();
+
+        foreach ($posts as $post) {
+            $postsWithTags[] = $post->withTags();
+        }
+
+        return response()->json($postsWithTags)->setStatusCode(200, 'Found posts'); 
+    }
 }

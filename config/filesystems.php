@@ -55,6 +55,13 @@ return [
             'visibility' => 'public',
         ],
 
+        "api_public" => [
+            'driver' => 'local',
+            'root' => '/',
+            'url' => env('APP_URL').'/api',
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

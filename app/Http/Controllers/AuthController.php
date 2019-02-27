@@ -55,8 +55,6 @@ class AuthController extends Controller
                     return response()->json([
                         'status' => 'false',
                         'Message' => 'Invalid auth data: password is wrong',
-                        'pass_user' => $user->password,
-                        'your_pass' => md5($request->password),
                     ])->setStatusCode(401, 'Invalid auth data');
                 }
             } else {
